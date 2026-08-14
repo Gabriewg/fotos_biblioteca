@@ -7,4 +7,3 @@ output/
 build/
 dist/
 *.spec
-sample_photos/
