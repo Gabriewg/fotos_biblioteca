@@ -1,5 +1,7 @@
+from datetime import datetime
 from pathlib import Path
 
+from src.metadata import get_photo_datetime
 from src.organizer import organize_photos
 
 SAMPLE_PHOTOS = Path(__file__).resolve().parent.parent / "sample_photos"
@@ -10,7 +12,10 @@ def test_dry_run_nao_copia_arquivos(tmp_path):
 
     ready = [a for a in actions if not a.skipped]
     assert len(ready) == 3
-    assert all(a.destination.parent.name == "08-13" for a in ready)
+    for action in ready:
+        dt = get_photo_datetime(action.source)
+        assert action.destination.parent.name == f"{dt.month:02d}-{dt.day:02d}"
+        assert action.destination.parent.parent.name == str(dt.year)
     assert list((tmp_path / "output").rglob("*")) == []
 
 
@@ -22,8 +27,9 @@ def test_copia_organizada_por_data(tmp_path):
         if action.skipped:
             continue
         assert action.destination.exists()
-        assert action.destination.parent.name == "08-13"
-        assert action.destination.parent.parent.name == "2026"
+        dt = get_photo_datetime(action.source)
+        assert action.destination.parent.name == f"{dt.month:02d}-{dt.day:02d}"
+        assert action.destination.parent.parent.name == str(dt.year)
 
 
 def test_arquivo_nao_foto_ignorado(tmp_path):
@@ -35,12 +41,15 @@ def test_arquivo_nao_foto_ignorado(tmp_path):
 
 
 def test_foto_sem_exif_organizada_por_data_de_modificacao(tmp_path):
-    actions = organize_photos([SAMPLE_PHOTOS / "foto_sem_exif.jpg"], tmp_path / "output")
+    photo = SAMPLE_PHOTOS / "foto_sem_exif.jpg"
+    actions = organize_photos([photo], tmp_path / "output")
 
     assert len(actions) == 1
     assert not actions[0].skipped
-    assert actions[0].destination.parent.name == "08-13"
-    assert actions[0].destination.parent.parent.name == "2026"
+    dt = get_photo_datetime(photo)
+    assert dt == datetime.fromtimestamp(photo.stat().st_mtime)
+    assert actions[0].destination.parent.name == f"{dt.month:02d}-{dt.day:02d}"
+    assert actions[0].destination.parent.parent.name == str(dt.year)
 
 
 def test_renomear_com_data_usa_nome_datado(tmp_path):
