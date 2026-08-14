@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pillow_heif
-from PIL import Image
+from PIL import ExifTags, Image
 
 pillow_heif.register_heif_opener()
 
@@ -24,13 +24,16 @@ def get_datetime_original(path: Path) -> datetime | None:
         image = Image.open(path)
         try:
             exif = image.getexif()
+            exif_ifd = exif.get_ifd(ExifTags.IFD.Exif)
         finally:
             image.close()
     except Exception:
         return None
 
-    return _parse_exif_datetime(exif.get(EXIF_DATETIME_ORIGINAL)) or _parse_exif_datetime(
-        exif.get(EXIF_DATETIME)
+    return (
+        _parse_exif_datetime(exif_ifd.get(EXIF_DATETIME_ORIGINAL))
+        or _parse_exif_datetime(exif_ifd.get(EXIF_DATETIME))
+        or _parse_exif_datetime(exif.get(EXIF_DATETIME))
     )
 
 
